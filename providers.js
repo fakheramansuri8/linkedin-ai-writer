@@ -13,12 +13,12 @@ const PROVIDERS = {
         },
         requestBody: (prompt, config, mediaContent = null) => {
             const messages = [{ role: 'user', content: [] }];
-            
+
             // Add text content
             if (prompt) {
                 messages[0].content.push({ type: 'text', text: prompt });
             }
-            
+
             // Add media content if provided
             if (mediaContent && mediaContent.length > 0) {
                 mediaContent.forEach(media => {
@@ -31,12 +31,12 @@ const PROVIDERS = {
                     });
                 });
             }
-            
+
             // If no content was added, add the prompt as text
             if (messages[0].content.length === 0) {
                 messages[0].content = prompt;
             }
-            
+
             return {
                 model: config.model || 'gpt-3.5-turbo',
                 messages: messages,
@@ -51,7 +51,7 @@ const PROVIDERS = {
             throw new Error('No response from OpenAI API');
         }
     },
-    
+
     anthropic: {
         name: 'Anthropic Claude',
         endpoint: 'https://api.anthropic.com/v1/messages',
@@ -66,12 +66,12 @@ const PROVIDERS = {
         },
         requestBody: (prompt, config, mediaContent = null) => {
             const content = [];
-            
+
             // Add text content
             if (prompt) {
                 content.push({ type: 'text', text: prompt });
             }
-            
+
             // Add media content if provided
             if (mediaContent && mediaContent.length > 0) {
                 mediaContent.forEach(media => {
@@ -85,7 +85,7 @@ const PROVIDERS = {
                     });
                 });
             }
-            
+
             return {
                 model: config.model || 'claude-3-haiku-20240307',
                 max_tokens: config.maxTokens || 1000,
@@ -100,7 +100,7 @@ const PROVIDERS = {
             throw new Error('No response from Anthropic API');
         }
     },
-    
+
     ollama: {
         name: 'Ollama (Local)',
         endpoint: 'http://localhost:11434/api/generate',
@@ -124,8 +124,8 @@ const PROVIDERS = {
 
             // Check if this is a vision model
             const isVisionModel = config.model && (
-                config.model.includes('llava') || 
-                config.model.includes('vision') || 
+                config.model.includes('llava') ||
+                config.model.includes('vision') ||
                 config.model.includes('vl')
             );
 
@@ -157,7 +157,7 @@ const PROVIDERS = {
             throw new Error('No response from Ollama');
         }
     },
-    
+
     lmstudio: {
         name: 'LM Studio (Local)',
         endpoint: 'http://localhost:1234/v1/chat/completions',
@@ -171,12 +171,12 @@ const PROVIDERS = {
         },
         requestBody: (prompt, config, mediaContent = null) => {
             const messages = [{ role: 'user', content: [] }];
-            
+
             // Add text content
             if (prompt) {
                 messages[0].content.push({ type: 'text', text: prompt });
             }
-            
+
             // Add media content if provided
             if (mediaContent && mediaContent.length > 0) {
                 mediaContent.forEach(media => {
@@ -189,12 +189,12 @@ const PROVIDERS = {
                     });
                 });
             }
-            
+
             // If no content was added, add the prompt as text
             if (messages[0].content.length === 0) {
                 messages[0].content = prompt;
             }
-            
+
             return {
                 model: config.model || 'local-model',
                 messages: messages,
@@ -210,7 +210,7 @@ const PROVIDERS = {
             throw new Error('No response from LM Studio');
         }
     },
-    
+
     groq: {
         name: 'Groq',
         endpoint: 'https://api.groq.com/openai/v1/chat/completions',
@@ -235,7 +235,7 @@ const PROVIDERS = {
             throw new Error('No response from Groq API');
         }
     },
-    
+
     together: {
         name: 'Together AI',
         endpoint: 'https://api.together.xyz/v1/chat/completions',
@@ -260,13 +260,13 @@ const PROVIDERS = {
             throw new Error('No response from Together AI');
         }
     },
-    
+
     gemini: {
         name: 'Google Gemini',
-        endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+        endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
         authType: 'api-key',
-        models: ['gemini-2.0-flash-exp', 'gemini-1.5-flash'],
-        defaultModel: 'gemini-2.0-flash-exp',
+        models: ['gemini-2.0-flash', 'gemini-2.5-flash'],
+        defaultModel: 'gemini-2.5-flash',
         maxTokens: 4000,
         temperature: 0.7,
         headers: {
@@ -276,12 +276,12 @@ const PROVIDERS = {
             const contents = [{
                 parts: []
             }];
-            
+
             // Add text content
             if (prompt) {
                 contents[0].parts.push({ text: prompt });
             }
-            
+
             // Add media content if provided
             if (mediaContent && mediaContent.length > 0) {
                 mediaContent.forEach(media => {
@@ -293,7 +293,7 @@ const PROVIDERS = {
                     });
                 });
             }
-            
+
             return {
                 contents: contents,
                 generationConfig: {
@@ -343,13 +343,13 @@ class ProviderManager {
             });
         });
     }
-    
+
     static async saveProviderConfig(config) {
         return new Promise((resolve) => {
             chrome.storage.local.set({ [STORAGE_KEYS.PROVIDER_CONFIG]: config }, resolve);
         });
     }
-    
+
     static async getAPIKey(provider) {
         return new Promise((resolve) => {
             chrome.storage.local.get(STORAGE_KEYS.API_KEYS, (data) => {
@@ -358,7 +358,7 @@ class ProviderManager {
             });
         });
     }
-    
+
     static async saveAPIKey(provider, apiKey) {
         return new Promise((resolve) => {
             chrome.storage.local.get(STORAGE_KEYS.API_KEYS, (data) => {
@@ -368,39 +368,44 @@ class ProviderManager {
             });
         });
     }
-    
+
     static getProvider(providerName) {
         return PROVIDERS[providerName];
     }
-    
+
     static getAllProviders() {
         return Object.keys(PROVIDERS).map(key => ({
             id: key,
             ...PROVIDERS[key]
         }));
     }
-    
+
     static async sendRequest(prompt, providerName, config = {}, mediaContent = null) {
         const provider = this.getProvider(providerName);
         if (!provider) {
             throw new Error(`Provider ${providerName} not found`);
         }
-        
+
         // Use API key from config if provided, otherwise get from storage
         const apiKey = config.apiKey || await this.getAPIKey(providerName);
         if (provider.authType !== 'none' && !apiKey) {
             throw new Error(`API key required for ${provider.name}`);
         }
-        
+
         const requestConfig = {
             model: config.model || provider.defaultModel,
             maxTokens: config.maxTokens || provider.maxTokens,
             temperature: config.temperature || provider.temperature
         };
-        
+
         const requestBody = provider.requestBody(prompt, requestConfig, mediaContent);
         let endpoint = config.customEndpoint || provider.endpoint;
-        
+
+        // Handle model placeholder in endpoint URL (specifically for Gemini)
+        if (endpoint.includes('{model}')) {
+            endpoint = endpoint.replace('{model}', requestConfig.model);
+        }
+
         const headers = { ...provider.headers };
         if (provider.authType === 'bearer') {
             headers.Authorization = `Bearer ${apiKey}`;
@@ -412,7 +417,7 @@ class ProviderManager {
             url.searchParams.set('key', apiKey);
             endpoint = url.toString();
         }
-        
+
         try {
             // Debug: Log the request body for vision models
             if (mediaContent && mediaContent.length > 0) {
@@ -420,19 +425,19 @@ class ProviderManager {
                 console.log('📷 Media count:', mediaContent.length);
                 console.log('📝 Request body:', JSON.stringify(requestBody, null, 2));
             }
-            
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify(requestBody)
             });
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(`❌ API Error (${response.status}):`, errorText);
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
-            
+
             const json = await response.json();
             return provider.responseParser(json);
         } catch (error) {
